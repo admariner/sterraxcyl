@@ -109,10 +109,10 @@ class _instagram:
         username = kwargs.get("username")
         if not username:
             username = _idToUsername(kwargs.get("id"),sessionid)
-            if not username:
-                _.r((UserNotFoundError("username" if kwargs.get("username") else "id") if username is None else RateLimitError))
+        if not username:
+            _.r((UserNotFoundError("username" if kwargs.get("username") else "id") if username is None else RateLimitError))
         self.username = username
-        
+
         __a1 = requests.get(f'https://www.instagram.com/{username}/channel/?__a=1', cookies=self.cookies, headers={'User-Agent':USER_AGENT}, allow_redirects=False)
         st = __a1.status_code
         if st != 200:
@@ -132,9 +132,9 @@ class _instagram:
         self.target_list:str = kwargs.get("target") # ["followers", "following", "both", "mutuals"]
 
         # relger ce truc tu possible express désactivé meme si la seul liste target est courte
-        self.delay = kwargs.get("delay") if kwargs.get("delay") else 0.0
+        self.delay = kwargs.get("delay") or 0.0
         self.all_infos = kwargs.get("all_infos")
-        
+
         self.no_exp_limit = kwargs.get("no_exp_limit")
         self.want_express = kwargs.get("express")
         self.express = self._canExpress()
@@ -147,20 +147,20 @@ class _instagram:
             return True
 
         if self.original_target == "followers":
-            possible_express = True if self.acc_infos['followers'] < 109 else False
+            possible_express = self.acc_infos['followers'] < 109
         elif self.original_target == "following":
-            possible_express = True if self.acc_infos['following'] < 109 else False
+            possible_express = self.acc_infos['following'] < 109
         elif self.original_target == "mutuals":
-            if lenght:
-                possible_express = True if lenght < 109 else False
-            else:
-                possible_express = None
+            possible_express = lenght < 109 if lenght else None
         else:
-            possible_express = True if (self.acc_infos['followers']+self.acc_infos['following']) < 109 else False
+            possible_express = (
+                self.acc_infos['followers'] + self.acc_infos['following']
+            ) < 109
+
 
         if possible_express is None:
             return None
-        return (True if self.want_express and possible_express else False)
+        return bool(self.want_express and possible_express)
 
     def _checkSessidFormat(self,s) -> None:
         """Compares the sessionId to a regex and return True if it matches"""
@@ -182,8 +182,6 @@ class _instagram:
                 _.r(PrivateAccError(self.username))
         except KeyError:
             _.p("There might be an issue with json response in stegram:_verifyPrivAccAccess, please report it to the issue section. This issue isn't fatal.")
-        else:
-            pass
     
     def _followListScraper(self,h:str,has_next_page=True,act_attempts=0,att=3) -> list:
         """Scrapes the follow list (precised with the hash) of the target username
@@ -242,15 +240,12 @@ class _instagram:
                 _.r(MutualsError("No mutuals possible since followers or following list is empty."))
             elif self.target_list == "both":
                 _.r(NoFollowError(f"""\"Both" list can't be retrieved since your target has no {empty_usernames_list_name}."""))
-        
+
             elif self.target_list == empty_usernames_list_name:
                 _.r(NoFollowError(f"{self.target_list.capitalize()} can't be scraped since it is empty"))
-            
-        scraping_hashes = _targListToHashesAndViceV(self.target_list)
-        follow_usernames = []
-        for hash in scraping_hashes:
-            follow_usernames.append(self._followListScraper(hash))
 
+        scraping_hashes = _targListToHashesAndViceV(self.target_list)
+        follow_usernames = [self._followListScraper(hash) for hash in scraping_hashes]
         return tuple(follow_usernames)
 
     def distractAPI(self) -> None: # Not used for now
@@ -310,14 +305,14 @@ class _instagram:
                     for key in elemPath:
                         j = j[key]
                         if key == elemPath[-1]: # Lorsque l'on arrive au bout du path, on enregistre dans le dict à sortir
-                            ret[c if c else key] = j
-            
+                            ret[c or key] = j
+
             return ret
 
         def normalExtract(ret:list) -> list:
             """Calls to ?__a=1 for each username in normal speed"""
             with requests.Session() as s:
-                for i, u in enumerate(lWithoutDone):
+                for u in lWithoutDone:
                     rep = s.get(f'https://www.instagram.com/{u}/channel/?__a=1',headers={'User-Agent':USER_AGENT,'Referer':f'https://www.instagram.com/{u}'},cookies=self.cookies,allow_redirects=False)
                     sleep(self.delay)
                     if rep.status_code == 200:
@@ -326,8 +321,6 @@ class _instagram:
 
                     elif rep.status_code == 404:
                         ret.append(outputDict({},u))
-                        
-                    # if i > 3: break # volontary rate limit for tests
 
             return ret
 
@@ -336,11 +329,11 @@ class _instagram:
             async with ClientSession() as s:
                 async def fetch(u:str):
                     """Process the request and append the result"""
-                    async with s.get(f'https://www.instagram.com/{u}/channel/?__a=1',headers={'User-Agent':USER_AGENT,'Referer': f'https://www.instagram.com/'},cookies=self.cookies,allow_redirects=False) as __a1:
+                    async with s.get(f'https://www.instagram.com/{u}/channel/?__a=1', headers={'User-Agent': USER_AGENT, 'Referer': 'https://www.instagram.com/'}, cookies=self.cookies, allow_redirects=False) as __a1:
                         if __a1.status == 200:
                             ret.append(outputDict(await __a1.json()))
                             pbar.update(1)
-                        
+
                         elif __a1.status == 404:
                             ret.append(outputDict({},u))
 

@@ -19,10 +19,13 @@ class UserNotFoundError(parentException):
         super().__init__(f"User not found. Verify its {userPointer}.")
 class PrivateAccError(parentException):
     def __init__(self,u:str=None) -> None:
-        super().__init__((u if u else "Your target")+" is a private account that you're not following.")
+        super().__init__(
+            (u or "Your target")
+            + " is a private account that you're not following."
+        )
 class NoFollowError(parentException):
     def __init__(self,m:str=None) -> None:
-        super().__init__(m if m else "Your target has not followers nor following.")
+        super().__init__(m or "Your target has not followers nor following.")
 class MutualsError(parentException):
     def __init__(self,m:str) -> None:
         super().__init__(m)
@@ -37,7 +40,7 @@ class ExportDataError(parentException):
         super().__init__(f"The file can't be exported; {m}.")
 class EmptyResultError(parentException):
     def __init__(self) -> None:
-        super().__init__(f"The result is empty.")
+        super().__init__('The result is empty.')
 
 # Custom
 class LoginError(parentException):

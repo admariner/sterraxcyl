@@ -7,10 +7,7 @@ VERTICAL = "Purple" #800080
 OTHER = "DarkCyan" #00af87
 
 def _generate_logo() -> str:
-    # https://patorjk.com/software/taag/#p=display&h=2&f=Small%20Slant&t=sterra
-    GIT_COM = "https://github.com/"
-    NAME = "novitae"
-    NOVI_URL = f"{GIT_COM}{NAME}"
+    NOVI_URL = f'https://github.com/novitae'
     VERSION_POSITON = 20
 
     _LOGO = """           __

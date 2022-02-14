@@ -24,9 +24,9 @@ _ = outputs()
 
 def EXPORT(**kwargs) -> bool:
     """Exports the follow list targeted and the information of the accounts in it"""
-    def autoLaunchBack(flist:list) -> list: # Not used for now
+    def autoLaunchBack(flist:list) -> list:    # Not used for now
         """Relaunch the process everytime it gets blocked until the work is done"""
-        lback_scraped = already if already else []
+        lback_scraped = already or []
         while len(lback_scraped) != len(flist):
             lback_scraped = scraper.getUsernameDetails(flist, already=lback_scraped)
             scraper.distractAPI()
@@ -173,13 +173,12 @@ def HISTORY(**kwargs:dict) -> None:
     if type(respnse) is tuple:
         rep, logo = respnse
         _.p(rep, logo=logo)
+    elif type(respnse) is dict:
+        toPr = ("\n    ".join([f"""{k} -> {json.dumps(v) if k == "part" else v["path"]}""" for k, v in respnse.items()]))
+        if funcKey == "all":
+            _.p(f"Full history:\n    {toPr}", logo="i")
     else:
-        if type(respnse) is dict:
-            toPr = ("\n    ".join([f"""{k} -> {json.dumps(v) if k == "part" else v["path"]}""" for k, v in respnse.items()]))
-            if funcKey == "all":
-                _.p(f"Full history:\n    {toPr}", logo="i")
-        else:
-            _.p(respnse, logo="i")
+        _.p(respnse, logo="i")
     return None
 
 def _parser() -> tuple:
@@ -190,35 +189,30 @@ def _parser() -> tuple:
 
     def _formatDefault(a:dict) -> dict:
         """Capture les erreurs d'arguments, change les id de path en path."""
-        _.colors = False if a.get("no_colors") else True
+        _.colors = not a.get("no_colors")
         _._raise = a.get("raw_raising")
 
         wich = a["wich"]
         no_false = {k:v for k,v in a.items() if (k if wich == "analyse" else v)} # Analyse module needs all value including None or False
         nfKeys = list(no_false.keys())
 
-        if wich in ["compare","analyse"]:
-            if wich == "compare":
-                compare_requ_args = ["not_common_usernames","common_usernames"]
-                if not set(compare_requ_args) & set(list(no_false.keys())):
-                    parser.error(f"""compare: compare requires at least one of the arguments: {", ".join([f'''--{x.replace("_","-")}''' for x in compare_requ_args])}""")
+        if wich == "compare":
+            compare_requ_args = ["not_common_usernames","common_usernames"]
+            if not set(compare_requ_args) & set(list(no_false.keys())):
+                parser.error(f"""compare: compare requires at least one of the arguments: {", ".join([f'''--{x.replace("_","-")}''' for x in compare_requ_args])}""")
 
-            elif wich == "analyse":
-                analyse_requ_args = ["personnal","interests"]
-                if not [item for item in list(no_false.keys()) if a[item] and item in analyse_requ_args]:
-                    no_false["personnal"] = True
+        if wich in ["compare", "analyse"] and a["no_print"] and not a["export"]:
+            parser.error(f"{wich}: {wich} requires --export if you choose --no-print (avoids making a job without any output)")
 
-            if wich in ["compare","analyse"]:
-                if a["no_print"] and not a["export"]:
-                    parser.error(f"{wich}: {wich} requires --export if you choose --no-print (avoids making a job without any output)")
+        if (
+            wich == "history"
+            and len([k for k, v in no_false.items() if k in HISTORY_ARG_KEYS]) != 1
+        ):
+            parser.error("history: history module requires only one argument between the ones available")
 
-        if wich == "history":
-            if len([k for k, v in no_false.items() if k in HISTORY_ARG_KEYS]) != 1:
-                parser.error("history: history module requires only one argument between the ones available")
-        
         if no_false.get("no_exp_limit") and not a.get("express"):
             parser.error("export: --no-exp-limit can't be applied if --express is not enabled")
-        
+
         if "fi" in nfKeys:
             if type(no_false["fi"]) is list:
                 no_false["fi"] = [(hst.file_id(fi) if isId(fi) else fi) for fi in no_false["fi"]]
@@ -228,7 +222,7 @@ def _parser() -> tuple:
                 no_false["fi"] = hst.file_id(no_false["fi"]) if isId(no_false["fi"]) else no_false["fi"]
                 if not no_false["fi"]:
                     _.r(IndexError('The input fileId have not been found in the history.'))
-        
+
         if "format" in nfKeys:
             no_false["format"] = no_false["format"] if no_false["format"] != "excel" else "xlsx"
 
@@ -237,7 +231,7 @@ def _parser() -> tuple:
             if wich == "export":
                 if no_false.get("target") == "both":
                     parser.error(classic_err)
-            
+
             elif wich == "compare":
                 if "not_common_usernames" in nfKeys and "common_usernames" in nfKeys and "export" in nfKeys:
                     parser.error(classic_err)
@@ -422,13 +416,12 @@ def main():
         _.p(f" $ sudo rm -rf {DEFAULT_EXPORT_PATH}")
         _.p(f" $ sudo rm -rf {PARTS_PATH}")
         _.p(f" $ sudo rm -rf {HISTORY_PATH}")
-        _.p(f" $ pip uninstall sterra")
-    
+        _.p(' $ pip uninstall sterra')
+
     else:
         module, kwargs = _parser()
         _.p(LOGO)
-        ret = globals()[module.upper()](**kwargs)
-        if ret:
+        if ret := globals()[module.upper()](**kwargs):
             _.p("If you have ideas to improve this program, don't hesitate to write them in the issue section !",logo="Plus")
 
 if __name__ == "__main__":
