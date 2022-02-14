@@ -25,7 +25,7 @@ def clear(**kwargs) -> str:
 
 def file_id(fileid:str=None,**kwargs) -> str:
     """Returns the path associated to an id"""
-    Id = fileid if fileid else kwargs.get("file_id")
+    Id = fileid or kwargs.get("file_id")
     if Id:
         for k, v in ACTUAL_HISTORY.items():
             if k == Id:
@@ -35,12 +35,10 @@ def file_id(fileid:str=None,**kwargs) -> str:
 def match(**kwargs) -> dict:
     """Returns elements of history matching with input"""
     Match = kwargs.get("match")
-    isRegex = Match[1:-1] if "??" == Match[0]+Match[-1] else False
+    isRegex = Match[1:-1] if Match[0]+Match[-1] == "??" else False
     matching = {}
     for k, v in ACTUAL_HISTORY.items():
-        if k == "part":
-            pass
-        else:
+        if k != "part":
             if isRegex and findall(f"(?:{isRegex})", v["path"]):
                 matching[k] = v["path"]
             elif Match in v["path"]:
@@ -51,9 +49,8 @@ def path(**kwargs) -> str:
     """Returns the id associated to a path"""
     Path = kwargs.get("path")
     for k, v in ACTUAL_HISTORY.items():
-        if k != "part":
-            if v["path"] == Path:
-                return f"Id for path {Path}:\n    {k}" if kwargs.get("tostr") else k
+        if k != "part" and v["path"] == Path:
+            return f"Id for path {Path}:\n    {k}" if kwargs.get("tostr") else k
     return f"No id associated to the path {Path} found.", "Exception" if kwargs.get("tostr") else None
 
 def add(**kwargs) -> str:
@@ -68,13 +65,12 @@ def add_part(part_path:str=None, target:str=None) -> str:
     """Return the id of the part created or existing"""
     if part_path:
         return findall(r"[0-9]{16}",part_path)[-1]
-    else:
-        Id = _mkId()
-        Path = f"{PARTS_PATH}{Id}.json"
-        PDICT[Id] = {"path":Path,"target":target}
-        with open(HISTORY_PATH,"w") as w:
-            w.write(dumps(ACTUAL_HISTORY,indent=4))
-        return Id, Path
+    Id = _mkId()
+    Path = f"{PARTS_PATH}{Id}.json"
+    PDICT[Id] = {"path":Path,"target":target}
+    with open(HISTORY_PATH,"w") as w:
+        w.write(dumps(ACTUAL_HISTORY,indent=4))
+    return Id, Path
 
 def get_part(part_option:str=True) -> tuple:
     if part_option is True:
@@ -106,9 +102,8 @@ def compare_tree(**kwargs):
         decomposed = exman()._decompose_path(file_path)
         if list(decomposed.keys()) != ["file_path","format","target"]:
             return {"base":decomposed["file_path"]}
-        else:
-            dcomp_split = decomposed["target"].replace("(","").replace(")","").split("&&" if "&&" in decomposed["target"] else "||")
-            return {file_id(**{"file_id":item}):climb_the_tree(item) for item in dcomp_split}
+        dcomp_split = decomposed["target"].replace("(","").replace(")","").split("&&" if "&&" in decomposed["target"] else "||")
+        return {file_id(**{"file_id":item}):climb_the_tree(item) for item in dcomp_split}
                 
     from sterra.exterra import exman
     return f"""History tree for compared file {kwargs["compare_tree"]}:\n"""+dumps({file_id(**{"file_id":kwargs["compare_tree"]}):climb_the_tree(kwargs["compare_tree"])}, indent=4)

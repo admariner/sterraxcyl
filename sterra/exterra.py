@@ -32,11 +32,9 @@ class exman:
                 fsplit[0].replace("&&","@@")
             for k, v in [tuple(item.split(";")) for item in fsplit[0].split("&")]:
                 retour[REFDIC[k]] = v.replace("@@","&&")
-        
+
         except ValueError: # For names like "ta;(16441852344045281&&1644185302525507).csv" that doesn't have "&"
-            if findall(r"[0-9]{8,20}\.", filenm) and not ";" in fsplit[0]: # For parts
-                pass
-            else:
+            if not findall(r"[0-9]{8,20}\.", filenm) or ";" in fsplit[0]:
                 try:
                     k, v = fsplit[0].split(";")
                     retour[REFDIC[k]] = v
@@ -74,14 +72,10 @@ class exman:
         return Id, newpath
 
     def part(self, target_list:str, part_path:str=None) -> str:
-        if part_path:
-            exists = get_part(part_path)
-            if type(exists) is tuple:
-                return exists
-            else:
-                return add_part(target=target_list)
-        else:
+        if not part_path:
             return add_part(target=target_list)
+        exists = get_part(part_path)
+        return exists if type(exists) is tuple else add_part(target=target_list)
 
     def custom_name(self, name:str, Format:str="xlsx", path:str=DEFAULT_EXPORT_PATH) -> str:
         """"""
